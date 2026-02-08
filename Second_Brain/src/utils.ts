@@ -12,6 +12,6 @@ export function random(len: number) {
         ans += options[Math.floor(Math.random() * length)];
     }
 
-    // Return the final random string.
+  
     return ans;
 }
