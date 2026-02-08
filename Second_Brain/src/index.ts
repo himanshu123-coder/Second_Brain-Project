@@ -5,6 +5,7 @@ import cors from "cors";
 import { userMiddleware } from "./middleware.js";
 import bcrypt from "bcrypt";
 const JWT_SECRET = "s3cret";
+import { random } from "./utils.js";
 
 const app = express();
 app.use(express.json());
@@ -54,9 +55,10 @@ app.post("/api/v1/content", userMiddleware, async (req, res) => {
     const { link, type, title } = req.body;
     // Create a new content entry linked to the logged-in user.
     await ContentModel.create({
+        title,
         link,
         type,
-        title,
+        
         userId: (req as any).userId,
         tags: []
     });
@@ -80,6 +82,53 @@ app.delete("/api/v1/content", userMiddleware, async (req, res) => {
     res.json({ message: "Deleted" }); // Send success response.
 });
 
+// Route 6: Share Content Link
+app.post("/api/v1/brain/share", userMiddleware, async (req, res) => {
+    const { share } = req.body;
+    if (share) {
+        // Check if a link already exists for the user.
+        const existingLink = await LinkModel.findOne({ userId: (req as any).userId });
+        if (existingLink) {
+            res.json({ hash: existingLink.hash }); // Send existing hash if found.
+            return;
+        }
+
+        // Generate a new hash for the shareable link.
+        const hash = random(10);
+        await LinkModel.create({ userId: (req as any).userId, hash });
+        res.json({ hash }); // Send new hash in the response.
+    } else {
+        // Remove the shareable link if share is false.
+        await LinkModel.deleteOne({ userId: (req as any).userId });
+        res.json({ message: "Removed link" }); // Send success response.
+    }
+});
+
+// Route 7: Get Shared Content
+app.get("/api/v1/brain/:shareLink", async (req, res) => {
+    const hash = req.params.shareLink;
+
+    // Find the link using the provided hash.
+    const link = await LinkModel.findOne({ hash });
+    if (!link) {
+        res.status(404).json({ message: "Invalid share link" }); // Send error if not found.
+        return;
+    }
+
+    // Fetch content and user details for the shareable link.
+    const content = await ContentModel.find({ userId: link.userId });
+    const user = await UserModel.findOne({ _id: link.userId });
+
+    if (!user) {
+        res.status(404).json({ message: "User not found" }); // Handle missing user case.
+        return;
+    }
+
+    res.json({
+        username: user.username,
+        content
+    }); // Send user and content details in response.
+});
 
 
 app.listen(3000)
