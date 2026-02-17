@@ -9,7 +9,6 @@ export function random(len) {
         // Generate a random index and append the corresponding character from `options` to `ans`.
         ans += options[Math.floor(Math.random() * length)];
     }
-    // Return the final random string.
     return ans;
 }
 //# sourceMappingURL=utils.js.map
